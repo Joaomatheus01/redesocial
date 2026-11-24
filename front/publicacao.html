@@ -1,0 +1,86 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conecta | Nova publicação</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <header class="topo">
+        <h1>Conecta<span>.</span></h1>
+        <nav>
+            <a href="feed.html">Feed</a>
+            <a href="index.html">Início</a>
+        </nav>
+    </header>
+
+    <main>
+        <h2>Criar publicação</h2>
+
+        <form id="formPublicacao">
+
+            <label for="legenda">O que você está pensando?</label>
+            <textarea id="legenda"
+                placeholder="Compartilhe um momento..."
+                required></textarea>
+
+            <label for="imagem_url">Link da foto (opcional)</label>
+            <input type="url" id="imagem_url"
+                placeholder="https://exemplo.com/foto.jpg">
+
+            <button type="submit">Publicar</button>
+        </form>
+
+        <p id="mensagem"></p>
+    </main>
+
+    <script>
+        const formulario = document.getElementById("formPublicacao");
+
+        formulario.addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            const legenda = document.getElementById("legenda").value;
+            const imagem_url = document.getElementById("imagem_url").value;
+            const mensagem = document.getElementById("mensagem");
+
+            try {
+                const resposta = await fetch("../back/api.php?rota=publicacao", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        id_usuario: 1,
+                        legenda: legenda,
+                        imagem_url: imagem_url || null
+                    })
+                });
+
+                const dados = await resposta.json();
+
+                if (!resposta.ok) {
+                    throw new Error(dados.erro || "Erro ao publicar.");
+                }
+
+                mensagem.textContent = "Publicação criada com sucesso!";
+                mensagem.style.color = "green";
+
+                formulario.reset();
+
+                setTimeout(() => {
+                    window.location.href = "feed.html";
+                }, 1000);
+
+            } catch (erro) {
+                mensagem.textContent = erro.message;
+                mensagem.style.color = "red";
+            }
+        });
+    </script>
+
+</body>
+</html>

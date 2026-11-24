@@ -1,0 +1,260 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conecta | Publicações</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <header class="topo">
+        <h1>Conecta<span>.</span></h1>
+
+        <nav>
+            <a href="index.html">Início</a>
+            <a href="feed.html">Publicações</a>
+            <a href="publicacao.html" class="nav-cadastro">+ Publicar</a>
+        </nav>
+    </header>
+
+    <main class="feed">
+
+        <section class="feed-cabecalho">
+            <div>
+                <span class="etiqueta">COMUNIDADE CONECTA</span>
+                <h2>Publicações</h2>
+                <p>Veja fotos, compartilhe momentos e curta suas publicações favoritas!</p>
+            </div>
+
+            <a href="publicacao.html" class="botao-principal">
+                + Fazer postagem
+            </a>
+        </section>
+
+        <div id="mensagemFeed" class="mensagem-feed">
+            Carregando publicações...
+        </div>
+
+        <section id="publicacoes" class="lista-publicacoes"></section>
+
+    </main>
+
+    <footer>
+        © 2026 Conecta. Feito para compartilhar momentos.
+    </footer>
+
+    <script>
+        const API = "../back/api.php";
+        const ID_USUARIO = 1;
+
+        const publicacoesDiv = document.getElementById("publicacoes");
+        const mensagemFeed = document.getElementById("mensagemFeed");
+
+        function criarElemento(tag, classe, texto) {
+            const elemento = document.createElement(tag);
+
+            if (classe) {
+                elemento.className = classe;
+            }
+
+            if (texto !== undefined) {
+                elemento.textContent = texto;
+            }
+
+            return elemento;
+        }
+
+        async function carregarPublicacoes() {
+            mensagemFeed.textContent = "Carregando publicações...";
+            publicacoesDiv.replaceChildren();
+
+            try {
+                const resposta = await fetch(`${API}?rota=publicacao`);
+
+                if (!resposta.ok) {
+                    throw new Error("Erro ao buscar publicações.");
+                }
+
+                const dados = await resposta.json();
+
+                const publicacoes = Array.isArray(dados)
+                    ? dados
+                    : (dados.publicacoes || dados.dados || []);
+
+                let curtidas = [];
+
+                try {
+                    const respostaCurtidas = await fetch(`${API}?rota=curtida`);
+
+                    if (respostaCurtidas.ok) {
+                        const dadosCurtidas = await respostaCurtidas.json();
+
+                        curtidas = Array.isArray(dadosCurtidas)
+                            ? dadosCurtidas
+                            : (dadosCurtidas.curtidas || dadosCurtidas.dados || []);
+                    }
+                } catch (erro) {
+                    console.log("Não foi possível carregar as curtidas.");
+                }
+
+                if (publicacoes.length === 0) {
+                    mensagemFeed.textContent =
+                        "Ainda não existem publicações. Seja o primeiro a compartilhar um momento!";
+                    return;
+                }
+
+                mensagemFeed.textContent = "";
+
+                publicacoes.reverse().forEach(post => {
+
+                    const card = criarElemento("article", "postagem");
+
+                    // Cabeçalho da publicação
+                    const perfil = criarElemento("div", "postagem-perfil");
+
+                    const avatar = criarElemento(
+                        "div",
+                        "postagem-avatar",
+                        "C"
+                    );
+
+                    const usuario = criarElemento("div", "postagem-usuario");
+
+                    usuario.appendChild(
+                        criarElemento("strong", "", "Comunidade Conecta")
+                    );
+
+                    usuario.appendChild(
+                        criarElemento(
+                            "small",
+                            "",
+                            `Publicação #${post.id_publicacao}`
+                        )
+                    );
+
+                    perfil.append(avatar, usuario);
+
+                    // Legenda
+                    const legenda = criarElemento(
+                        "p",
+                        "legenda-postagem",
+                        post.legenda || "Compartilhando um momento especial!"
+                    );
+
+                    // Imagem
+                    const imagem = document.createElement("img");
+
+                    imagem.className = "foto-postagem";
+                    imagem.alt = "Imagem da publicação";
+
+                    imagem.src = post.imagem_url ||
+                        "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=1200&q=80";
+
+                    imagem.onerror = function () {
+                        this.style.display = "none";
+                    };
+
+                    // Curtidas já registradas
+                    const quantidade = curtidas.filter(c =>
+                        Number(c.id_publicacao) === Number(post.id_publicacao)
+                    ).length;
+
+                    const jaCurtiu = curtidas.some(c =>
+                        Number(c.id_publicacao) === Number(post.id_publicacao) &&
+                        Number(c.id_usuario) === ID_USUARIO
+                    );
+
+                    // Área de curtidas
+                    const areaCurtidas = criarElemento(
+                        "div",
+                        "area-curtidas"
+                    );
+
+                    const contador = criarElemento(
+                        "span",
+                        "contador-curtidas",
+                        `❤️ ${quantidade} curtida(s)`
+                    );
+
+                    const botaoCurtir = criarElemento(
+                        "button",
+                        "botao-curtir",
+                        jaCurtiu ? "♥ Curtido!" : "♡ Curtir"
+                    );
+
+                    botaoCurtir.type = "button";
+
+                    if (jaCurtiu) {
+                        botaoCurtir.classList.add("curtido");
+                        botaoCurtir.disabled = true;
+                    }
+
+                    // Ação de curtir
+                    botaoCurtir.addEventListener("click", async function () {
+
+                        botaoCurtir.disabled = true;
+
+                        try {
+                            const respostaCurtida = await fetch(
+                                `${API}?rota=curtida`,
+                                {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json"
+                                    },
+                                    body: JSON.stringify({
+                                        id_usuario: ID_USUARIO,
+                                        id_publicacao: Number(post.id_publicacao)
+                                    })
+                                }
+                            );
+
+                            const resultado = await respostaCurtida.json();
+
+                            if (!respostaCurtida.ok) {
+                                throw new Error(
+                                    resultado.mensagem ||
+                                    "Não foi possível curtir a publicação."
+                                );
+                            }
+
+                            contador.textContent =
+                                `❤️ ${quantidade + 1} curtida(s)`;
+
+                            botaoCurtir.textContent = "♥ Curtido!";
+                            botaoCurtir.classList.add("curtido");
+
+                        } catch (erro) {
+                            alert(erro.message);
+                            botaoCurtir.disabled = false;
+                        }
+                    });
+
+                    areaCurtidas.append(contador, botaoCurtir);
+
+                    card.append(
+                        perfil,
+                        legenda,
+                        imagem,
+                        areaCurtidas
+                    );
+
+                    publicacoesDiv.appendChild(card);
+                });
+
+            } catch (erro) {
+                mensagemFeed.textContent =
+                    "Não foi possível carregar as publicações. Verifique se o Laragon está ligado.";
+
+                console.error(erro);
+            }
+        }
+
+        carregarPublicacoes();
+    </script>
+
+</body>
+</html>
